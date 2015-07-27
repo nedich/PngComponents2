@@ -2,7 +2,15 @@ unit u_componentPngBitBtn2;
 
                                       INTERFACE
                                       
+{
+Author Nedko Ivanov
+Based on PngComponents by Uwe Raabe http://cc.embarcadero.com/item/26127
+Date 2015-07-27
+URL https://github.com/nedich/PngComponents2
+License MIT
+}
 
+                                      
 uses
   u_PngComponentCommons, pngimage, Messages, Controls, Windows, Classes, SysUtils, Graphics,
   Buttons, PngImageList;
