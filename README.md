@@ -1,6 +1,6 @@
 # PngComponents2
 
-Provides TPngSpeedButton2 and TPngBitBtn2 (VCL) as an extension to the original PngComponents. 
+Provides VCL button components TPngSpeedButton2 and TPngBitBtn2 as an extension to the original PngComponents. 
 (This means this package requires the [PngComponents](http://cc.embarcadero.com/item/26127) suite)
 
 Has more properties such as 
