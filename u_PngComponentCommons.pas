@@ -72,7 +72,7 @@ type
 
   IButtonControl = interface
   ['{8B2D2C7E-12A7-40B4-A161-4122AAC9E8DA}']
-    function GetThemedDetails: IThemedButtonDetails;
+    function GetThemedButtonDetails: IThemedButtonDetails;
     function GetDrawState: TButtonDrawState;
     function GetLayout: TButtonLayout;
     function GetPngOptions: TPngOptions2;
@@ -85,9 +85,14 @@ type
     function GetHeight: Integer;
     function GetEnabled: boolean;
     function GetClientRect: TRect;
+    function GetBoundsRect: TRect;
     function GetPngImage: TPngImage;
     function GetCanvas: TCanvas;
     function GetFont: TFont;
+    function GetWordWrap: Boolean;
+    function GetImages: TPngImageList;
+    function GetImageIndex: integer;
+    function DrawTextBiDiModeFlags(Flags: Longint): Longint;
     
     property Width: Integer read GetWidth;
     property Height: Integer read GetHeight;
@@ -98,12 +103,55 @@ type
     property Margin: Integer read GetMargin;
     property DrawState: TButtonDrawState read GetDrawState;
     property Enabled: boolean read GetEnabled;
-    property ThemedDetails: IThemedButtonDetails read GetThemedDetails;
+    property ThemedDetails: IThemedButtonDetails read GetThemedButtonDetails;
     property ClientRect: TRect read GetClientRect;
+    property BoundsRect: TRect read GetBoundsRect;
     property PngImage: TPngImage read GetPngImage;
     property PngOptions: TPngOptions2 read GetPngOptions;
     property Canvas: TCanvas read GetCanvas;
     property Font: TFont read GetFont;
+    property WordWrap: Boolean read GetWordWrap;
+    property Images: TPngImageList read GetImages;
+    property ImageIndex: integer read GetImageIndex;
+  end;
+
+  IButtonControlWritable = interface(IButtonControl)
+  ['{99A0C765-C70E-4CA9-9F08-27944601626B}']
+    procedure SetWidth(value: integer);
+    procedure SetHeight(value: integer);
+    procedure SetLayout(value: TButtonLayout);
+    procedure SetText(value: string);
+    procedure SetPngBlendFactor(value: integer);
+    procedure SetSpacing(value: integer);
+    procedure SetMargin(value: integer);
+    procedure SetDrawState(value: TButtonDrawState);
+    procedure SetEnabled(value: boolean);
+    procedure SetBoundsRect(value: TRect);
+    procedure SetPngImage(value: TPngImage);
+    procedure SetPngOptions(value: TPngOptions2);
+    procedure SetFont(value: TFont);
+    procedure SetWordWrap(value: Boolean);
+    procedure SetImages(value: TPngImageList);
+    procedure SetImageIndex(value: Integer);
+    property Width: Integer read GetWidth write SetWidth;
+    property Height: Integer read GetHeight write SetHeight;
+    property Layout: TButtonLayout read GetLayout write SetLayout;
+    property Caption: string read GetText write SetText;
+    property PngBlendFactor: Integer read GetPngBlendFactor write SetPngBlendFactor;
+    property Spacing: Integer read GetSpacing write SetSpacing;
+    property Margin: Integer read GetMargin write SetMargin;
+    property DrawState: TButtonDrawState read GetDrawState write SetDrawState;
+    property Enabled: boolean read GetEnabled write SetEnabled;
+    property ThemedDetails: IThemedButtonDetails read GetThemedButtonDetails;
+    property ClientRect: TRect read GetClientRect;
+    property BoundsRect: TRect read GetBoundsRect write SetBoundsRect;
+    property PngImage: TPngImage read GetPngImage write SetPngImage;
+    property PngOptions: TPngOptions2 read GetPngOptions write SetPngOptions;
+    property Canvas: TCanvas read GetCanvas;
+    property Font: TFont read GetFont write SetFont;
+    property WordWrap: Boolean read GetWordWrap write SetWordWrap;
+    property Images: TPngImageList read GetImages write SetImages;
+    property ImageIndex: integer read GetImageIndex write SetImageIndex;
   end;
 
   TThemedButtonDetails = class(TInterfacedPersistent, IThemedButtonDetails)
@@ -144,11 +192,11 @@ type
   TButtonsLib = class
   public  
     class procedure RenderButton(control: IButtonControl); overload;
-    class procedure RenderButton(r: TRect; PngImage: TPngImage; DrawState: TButtonDrawState; h: HDC; Caption: string; control: TControl; Layout: TButtonLayout; Margin, Spacing, PngBlendFactor: Integer; Options: TPngOptions2; Font: TFont); overload;
+    //class procedure RenderButton(r: TRect; PngImage: TPngImage; DrawState: TButtonDrawState; h: HDC; Caption: string; control: TControl; Layout: TButtonLayout; Margin, Spacing, PngBlendFactor: Integer; Options: TPngOptions2; Font: TFont; bWordWrap: boolean); overload;
     class procedure _DrawPNG(Png: TPngImage; Canvas: TCanvas; const ARect: TRect; const Options: TPngOptions2; drawstate: TButtonDrawState; PngBlendFactor: Integer);
     class procedure CalcButtonLayout(Canvas: TCanvas; PngImage: TPngImage; const Client:
       TRect; Pressed, Down: Boolean; const Caption: string; Layout: TButtonLayout;
-      Margin, Spacing: Integer; var GlyphPos, TextPos: TPoint; BiDiFlags: LongInt);
+      Margin, Spacing: Integer; var GlyphPos, TextPos: TPoint; BiDiFlags: LongInt; bWordWrap: boolean);
   end;
   
   TPngLib = class
@@ -291,43 +339,50 @@ end;
 
 
 class procedure TButtonsLib.RenderButton(control: IButtonControl);
-begin
-  TButtonsLib.RenderButton(control.ClientRect, control.PngImage, control.DrawState,
-    control.Canvas.Handle, control.Caption, control.GetControl, control.Layout, control.Margin, control.Spacing,
-    control.PngBlendFactor, control.PngOptions, control.font
-  );
-end;
+//begin
+//  TButtonsLib.RenderButton(control.ClientRect, control.PngImage, control.DrawState,
+//    control.Canvas.Handle, control.Caption, control.GetControl, control.Layout, control.Margin, control.Spacing,
+//    control.PngBlendFactor, control.PngOptions, control.Font, control.WordWrap
+//  );
+//end;
 
 
 
-class procedure TButtonsLib.RenderButton(r: TRect; PngImage: TPngImage;
-   DrawState: TButtonDrawState; h: HDC; Caption: string; control: TControl; Layout: TButtonLayout; 
-   Margin, Spacing, PngBlendFactor: integer; Options: TPngOptions2; Font: TFont);
+//class procedure TButtonsLib.RenderButton(r: TRect; PngImage: TPngImage;
+//   DrawState: TButtonDrawState; h: HDC; Caption: string; control: TControl; Layout: TButtonLayout; 
+//   Margin, Spacing, PngBlendFactor: integer; Options: TPngOptions2; Font: TFont; bWordWrap: boolean);
 var
+  PngImage: TPngImage;
   Canvas: TCanvas;
   PaintRect: TRect;
   GlyphPos, TextPos: TPoint;
-  //LastOrigin: TPoint;
+  r: TRect;
+  Caption: string;
+  DrawState: TButtonDrawState;
   
   procedure DrawTheText;
   var
     PaintRect: TRect;
+    flagsDrawText: cardinal;
   begin
     if Length(Caption) > 0 then begin
       //PaintRect := Rect(TextPos.X, TextPos.Y, control.Width-TextPos.X, control.Height-TextPos.Y);
       PaintRect := Rect(TextPos.X, TextPos.Y, control.Width, control.Height);
       //if() then begin Dec(paintrect.Right, TextPos.X); //no glyph
       Canvas.Brush.Style := bsClear;
+
+      flagsDrawText := control.DrawTextBiDiModeFlags(0) {or DT_VCENTER} {or DT_CENTER};
+
+      if(control.WordWrap) then
+        flagsDrawText := flagsDrawText or DT_WORDBREAK;
       
-      DrawText(Canvas.Handle, PChar(Caption), -1, PaintRect,
-        control.DrawTextBiDiModeFlags(0) {or DT_VCENTER} or DT_LEFT or DT_WORDBREAK {or DT_CENTER} or DT_CALCRECT);
+      DrawText(Canvas.Handle, PChar(Caption), -1, PaintRect, flagsDrawText or DT_CALCRECT);
 
       //grayed Caption when disabled
       if not DrawState.bEnabled then begin
         OffsetRect(PaintRect, 1, 1);
         Canvas.Font.Color := clBtnHighlight;
-        DrawText(Canvas.Handle, PChar(Caption), -1, PaintRect,
-          control.DrawTextBiDiModeFlags(0) {or DT_VCENTER} or DT_LEFT or DT_WORDBREAK {or DT_CENTER} {or DT_CALCRECT});
+        DrawText(Canvas.Handle, PChar(Caption), -1, PaintRect, flagsDrawText);
         OffsetRect(PaintRect, -1, -1);
         Canvas.Font.Color := clBtnShadow;
       end;
@@ -407,9 +462,15 @@ var
   
 begin
   Canvas := TCanvas.Create;
+  r := control.ClientRect;
+  PngImage := control.PngImage;
+  Caption := control.Caption;
+  DrawState := control.DrawState;
+  
+  
   try
-    Canvas.Handle := h;
-    Canvas.Font.assign(Font);
+    Canvas.Handle := control.Canvas.Handle;
+    Canvas.Font.assign(control.Font);
 
 //    GetWindowOrgEx(h, LastOrigin);
 //    SetWindowOrgEx(h, r.left, r.Right, nil);
@@ -428,12 +489,14 @@ begin
 
     //Calculate the position of the PNG glyph
     TButtonsLib.CalcButtonLayout(Canvas, PngImage, control.ClientRect, DrawState.bPressed, False, Caption,
-      Layout, Margin, Spacing, GlyphPos, TextPos, control.DrawTextBiDiModeFlags(0));
+      control.Layout, control.Margin, control.Spacing, 
+      {var}GlyphPos, {var}TextPos,
+      control.DrawTextBiDiModeFlags(0), control.WordWrap);
 
     //Draw the image
     if (PngImage <> nil) and not PngImage.Empty then begin
       PaintRect := Bounds(GlyphPos.X, GlyphPos.Y, PngImage.Width, PngImage.Height);
-      TButtonsLib._DrawPNG(PngImage, Canvas, PaintRect, Options, drawstate, PngBlendFactor);
+      TButtonsLib._DrawPNG(PngImage, Canvas, PaintRect, control.PngOptions, control.DrawState, control.PngBlendFactor);
     end;
 
     //Draw the text
@@ -479,7 +542,7 @@ end;
 
 class procedure TButtonsLib.CalcButtonLayout(Canvas: TCanvas; PngImage: TPngImage; const Client:
   TRect; Pressed, Down: Boolean; const Caption: string; Layout: TButtonLayout;
-  Margin, Spacing: Integer; var GlyphPos, TextPos: TPoint; BiDiFlags: LongInt);
+  Margin, Spacing: Integer; var GlyphPos, TextPos: TPoint; BiDiFlags: Longint; bWordWrap: boolean);
 {-----------------------------------------------------------------------------
   Procedure: CalcButtonLayout
   Author:    
@@ -490,6 +553,7 @@ class procedure TButtonsLib.CalcButtonLayout(Canvas: TCanvas; PngImage: TPngImag
 var
   ClientSize, GlyphSize, TextSize, BedSize: TPoint;
   TextBounds: TRect;
+  flags: Cardinal;
   //r: TRect;
 begin
   if (BiDiFlags and DT_RIGHT) = DT_RIGHT then begin
@@ -508,9 +572,18 @@ begin
     GlyphSize := Point(0, 0);
 
   if Length(Caption) > 0 then begin
-    TextBounds := Rect(0, 0, Client.Right - Client.Left, 0);
-    DrawText(Canvas.Handle, PChar(Caption), Length(Caption), TextBounds,
-      DT_CALCRECT or BiDiFlags);
+    TextBounds := Rect(0, 0, Client.Right - Client.Left, client.Bottom-client.top-GlyphSize.y);
+
+    if(GlyphSize.X<>0) then
+      TextBounds.Right := TextBounds.Right - GlyphSize.X - Spacing;
+      
+    if(GlyphSize.Y<>0) then
+      TextBounds.Bottom := TextBounds.Bottom - GlyphSize.Y - Spacing;
+    
+    flags := DT_CALCRECT or BiDiFlags;
+    if(bWordWrap) then 
+      flags := flags or DT_WORDBREAK;
+    DrawText(Canvas.Handle, PChar(Caption), Length(Caption), TextBounds, flags);
     TextSize := Point(TextBounds.Right - TextBounds.Left, TextBounds.Bottom - TextBounds.Top);
   end
   else begin
@@ -903,6 +976,7 @@ end;
 procedure TButtonOverlay.Changed;
 begin
   if(Assigned(FOnChange)) then try
+    ASSERT(Self<>nil);
     FOnChange(Self);
   except
     beep;

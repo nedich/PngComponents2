@@ -29,6 +29,7 @@ type
     m_imagelist: TPngImageList;
     m_nImageIndex: Integer;
     m_overlay: TButtonOverlay;
+    m_bWordWrap: boolean;
     procedure CNDrawItem(var Message: TWMDrawItem); message CN_DRAWITEM;
     procedure SetPngBlendFactor(const Value: Integer);
     procedure CMMouseEnter(var Message: TMessage); message CM_MOUSEENTER;
@@ -38,14 +39,15 @@ type
     procedure SetPngImage(const Value: TPngImage);
     function IsPngImageStored: Boolean;
     procedure SetImageIndex(const Value: Integer);
-    procedure SetImageList(const Value: TPngImageList);
+    procedure SetImages(const Value: TPngImageList);
     procedure _setImageFromImageList;
     procedure RecomposeImage(Sender: TObject = nil);
+    procedure SetWordWrap(const Value: Boolean);
   protected
     procedure ActionChange(Sender: TObject; CheckDefaults: Boolean); override;
   public
     function GetText: string;
-    function GetThemedDetails: IThemedButtonDetails;
+    function GetThemedButtonDetails: IThemedButtonDetails;
     function GetLayout: TButtonLayout;
     function GetPngOptions: TPngOptions2;
     function GetMargin: Integer;
@@ -57,17 +59,23 @@ type
     function GetPngImage: TPngImage;
     function GetCanvas: TCanvas;
     function GetFont: TFont;
+    function GetWordWrap: Boolean;
+    function GetBoundsRect: TRect;
+    procedure SetBoundsRect(value: TRect);
+    function GetImageIndex: Integer;
+    function GetImages: TPngImageList;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property Images: TPngImageList read m_imagelist write SetImageList;
-    property ImageIndex: Integer read m_nImageIndex write SetImageIndex;
+    property Images: TPngImageList read GetImages write SetImages;
+    property ImageIndex: Integer read GetImageIndex write SetImageIndex;
     property PngImage: TPngImage read m_PngImage write SetPngImage stored IsPngImageStored;
     property PngOptions: TPngOptions2 read m_PngOptions write SetPngOptions default [pngGrayscaleOnDisabled,pngBlendNotHovering];
     property PngBlendFactor: Integer read m_nPngBlendFactor write SetPngBlendFactor default 255;
     property ThemingDetails: TThemedButtonDetails read m_themingdeatails;
     property Overlay: TButtonOverlay read m_overlay write m_overlay;
+    property WordWrap: Boolean read GetWordWrap write SetWordWrap;
   end;
 
 procedure Register;
@@ -170,6 +178,7 @@ constructor TPngBitBtn2.Create(AOwner: TComponent);
 -----------------------------------------------------------------------------}
 begin
   inherited;
+  m_bWordWrap := True;
   m_canvas := TCanvas.Create;
   m_PngImage := TPngImage.Create;
   m_nPngBlendFactor := 127;
@@ -217,6 +226,11 @@ end;
 
 
 
+function TPngBitBtn2.GetBoundsRect: TRect;
+begin
+  Result := BoundsRect;
+end;
+
 function TPngBitBtn2.GetCanvas: TCanvas;
 begin
   Result := m_canvas;
@@ -257,6 +271,30 @@ begin
   Result := Height;
 end;
 
+function TPngBitBtn2.GetImageIndex: Integer;
+{-----------------------------------------------------------------------------
+  Procedure: GetImageIndex
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: None
+  Result:    Integer
+-----------------------------------------------------------------------------}
+begin
+  Result := m_nImageIndex;
+end;
+
+function TPngBitBtn2.GetImages: TPngImageList;
+{-----------------------------------------------------------------------------
+  Procedure: GetImages
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: None
+  Result:    TPngImageList
+-----------------------------------------------------------------------------}
+begin
+  Result := m_imagelist;
+end;
+
 function TPngBitBtn2.GetLayout: TButtonLayout;
 begin
   Result := Layout;
@@ -292,15 +330,41 @@ begin
   Result := Caption;
 end;
 
-function TPngBitBtn2.GetThemedDetails: IThemedButtonDetails;
+
+function TPngBitBtn2.GetThemedButtonDetails: IThemedButtonDetails;
+{-----------------------------------------------------------------------------
+  Procedure: GetThemedButtonDetails
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: None
+  Result:    IThemedButtonDetails
+-----------------------------------------------------------------------------}
 begin
   Result := m_themingdeatails;
 end;
+
+
 
 function TPngBitBtn2.GetWidth: Integer;
 begin
   Result := Width;
 end;
+
+
+
+function TPngBitBtn2.GetWordWrap: Boolean;
+{-----------------------------------------------------------------------------
+  Procedure: GetWordWrap
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: None
+  Result:    Boolean
+-----------------------------------------------------------------------------}
+begin
+  Result := m_bWordWrap;
+end;
+
+
 
 function TPngBitBtn2.IsPngImageStored: Boolean;
 begin
@@ -329,6 +393,20 @@ end;
 
 
 
+procedure TPngBitBtn2.SetBoundsRect(value: TRect);
+{-----------------------------------------------------------------------------
+  Procedure: SetBoundsRect
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: value: TRect
+  Result:    None
+-----------------------------------------------------------------------------}
+begin
+  BoundsRect := value;
+end;
+
+
+
 procedure TPngBitBtn2.SetImageIndex(const Value: Integer);
 {-----------------------------------------------------------------------------
   Procedure: SetImageIndex
@@ -344,7 +422,7 @@ end;
 
 
 
-procedure TPngBitBtn2.SetImageList(const Value: TPngImageList);
+procedure TPngBitBtn2.SetImages(const Value: TPngImageList);
 {-----------------------------------------------------------------------------
   Procedure: SetImageList
   Author:    nbi
@@ -419,6 +497,21 @@ procedure TPngBitBtn2.SetPngOptions(const Value: TPngOptions2);
 begin
   m_PngOptions := Value;
   RecomposeImage;
+end;
+
+
+
+
+procedure TPngBitBtn2.SetWordWrap(const Value: Boolean);
+{-----------------------------------------------------------------------------
+  Procedure: SetWordWrap
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: const Value: Boolean
+  Result:    None
+-----------------------------------------------------------------------------}
+begin
+  m_bWordWrap := Value;
 end;
 
 

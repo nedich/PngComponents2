@@ -30,6 +30,7 @@ type
     m_imagelist: TPngImageList;
     m_nImageIndex: Integer;
     m_overlay: TButtonOverlay;
+    m_bWordWrap: Boolean;
     procedure SetPngBlendFactor(const Value: Integer);
     procedure CMMouseEnter(var Message: TMessage); message CM_MOUSEENTER;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
@@ -40,17 +41,21 @@ type
     {$ifdef nbi}procedure OnProvideStartEndFrame(bp: IBufferedPaint; hFrom, hTo: HDC);{$endif}
     procedure _setImageFromImageList;
     procedure SetImageIndex(const Value: Integer);
-    procedure SetImageList(const Value: TPngImageList);
+    procedure SetImages(const Value: TPngImageList);
     procedure RecomposeImage(Sender: TObject = nil);
+    procedure SetTransparent(const Value: Boolean);
+    function GetTransparent: Boolean;
+    procedure SetWordWrap(const Value: Boolean);
+    function GetImageIndex: Integer;
+    function GetImages: TPngImageList;
   protected
     procedure Paint; override;
     procedure ActionChange(Sender: TObject; CheckDefaults: Boolean); override;
     procedure Loaded; override;
-    property Glyph stored False;
     property NumGlyphs stored False;
   public
     {$ifdef nbi}function GetBufferedPaint: IBufferedPaint;{$endif}
-    function GetThemedDetails: IThemedButtonDetails;
+    function GetThemedButtonDetails: IThemedButtonDetails;
     function GetDrawState: TButtonDrawState;
     function GetLayout: TButtonLayout;
     function GetPngOptions: TPngOptions2;
@@ -64,18 +69,23 @@ type
     function GetCanvas: TCanvas;
     function GetText: string;
     function GetFont: TFont;
+    function GetWordWrap: Boolean;
+    function GetBoundsRect: TRect;
+    procedure SetBoundsRect(value: TRect);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property Images: TPngImageList read m_imagelist write SetImageList;
-    property ImageIndex: Integer read m_nImageIndex write SetImageIndex default -1;
+    property Glyph stored False;
+    property Images: TPngImageList read GetImages write SetImages;
+    property ImageIndex: Integer read GetImageIndex write SetImageIndex default -1;
     property PngImage: TPngImage read m_PngImage write SetPngImage stored PngImageStored;
-    property PngOptions: TPngOptions2 read m_PngOptions write SetPngOptions default [pngGrayscaleOnDisabled,pngBlendNotHovering];
+    property PngOptions: TPngOptions2 read GetPngOptions write SetPngOptions default [pngGrayscaleOnDisabled,pngBlendNotHovering];
     property PngBlendFactor: Integer read m_nPngBlendFactor write SetPngBlendFactor default 127;
     property ThemingDetails: TThemedButtonDetails read m_themingdeatails write m_themingdeatails;
     property Overlay: TButtonOverlay read m_overlay write m_overlay;
-    property Transparent default False;
+    property Transparent: Boolean read GetTransparent write SetTransparent default False; //transparent=false -> less flicker on form resize
+    property WordWrap: Boolean read GetWordWrap write SetWordWrap;
   end;
 
 procedure Register;
@@ -100,20 +110,27 @@ procedure TPngSpeedButton2.ActionChange(Sender: TObject; CheckDefaults: Boolean)
   Arguments: Sender: TObject; CheckDefaults: Boolean
   Result:    None
 -----------------------------------------------------------------------------}
+var
+  a: TCustomAction;
 begin
   inherited ActionChange(Sender, CheckDefaults);
   
   m_bImageFromAction := (Sender<>nil);
   
   if Sender is TCustomAction then begin
-    with TCustomAction(Sender) do begin
+    a := TCustomAction(Sender);
+    //with TCustomAction(Sender) do 
+    begin
       //Copy image from action's imagelist
-      if (PngImage.Empty or m_bImageFromAction) and (ActionList <> nil) and
-        (ActionList.Images <> nil) and (ImageIndex >= 0) and 
-        (ImageIndex < ActionList.Images.Count) then 
+      if (PngImage.Empty or m_bImageFromAction) and (a.ActionList <> nil) and
+        (a.ActionList.Images is TPngImageList) and
+        (a.ActionList.Images <> nil) and (a.ImageIndex >= 0) and 
+        (a.ImageIndex < a.ActionList.Images.Count) then 
       begin
-        CopyImageFromImageList(m_PngImage, ActionList.Images, ImageIndex);
-        m_bImageFromAction := True;
+        images := TPngImageList(a.ActionList.Images);
+        imageindex := a.ImageIndex;
+        //CopyImageFromImageList(m_PngImage, ActionList.Images, ImageIndex);
+        //m_bImageFromAction := True;
       end;
     end;
   end;
@@ -174,7 +191,7 @@ function TPngSpeedButton2.PngImageStored: Boolean;
   Result:    Boolean
 -----------------------------------------------------------------------------}
 begin
-  Result := not m_bImageFromAction and ((m_nImageIndex=-1) or (m_imagelist=nil));
+  Result := {not m_bImageFromAction and} ((m_nImageIndex=-1) or (m_imagelist=nil));
 end;
 
 
@@ -221,7 +238,8 @@ constructor TPngSpeedButton2.Create(AOwner: TComponent);
 -----------------------------------------------------------------------------}
 begin
   inherited;
-  
+
+  m_bWordWrap := True;  
   m_PngImage := TPngImage.Create;
   m_nPngBlendFactor := 127;
   m_bImageFromAction := False;
@@ -238,6 +256,14 @@ begin
 
   m_overlay := TButtonOverlay.Create;
   m_overlay.OnChange := RecomposeImage;
+
+  //if ThemeServices.ThemesEnabled then
+    //ControlStyle := ControlStyle - [csOpaque]
+  //else
+    //ControlStyle := ControlStyle + [csOpaque];
+
+  transparent := False;
+    
 end;
 
 
@@ -255,6 +281,42 @@ begin
   m_themingdeatails.Free;
   inherited;
 end;
+
+
+
+procedure TPngSpeedButton2.SetTransparent(const Value: Boolean);
+{-----------------------------------------------------------------------------
+  Procedure: SetTransparent
+  Author:    nbi
+  Date:      05-Aug-2015
+  Arguments: const Value: Boolean
+  Result:    None
+-----------------------------------------------------------------------------}
+begin
+  if Transparent <> Value then
+  begin
+    if Value then
+      ControlStyle := ControlStyle - [csOpaque]
+    else
+      ControlStyle := ControlStyle + [csOpaque];
+    Invalidate;
+  end;
+end;
+
+
+
+procedure TPngSpeedButton2.SetWordWrap(const Value: Boolean);
+{-----------------------------------------------------------------------------
+  Procedure: SetWordWrap
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: const Value: Boolean
+  Result:    None
+-----------------------------------------------------------------------------}
+begin
+  m_bWordWrap := value;
+end;
+
 
 
 {$ifdef nbi}
@@ -308,6 +370,20 @@ end;
 {$endif}
 
 
+function TPngSpeedButton2.GetBoundsRect: TRect;
+{-----------------------------------------------------------------------------
+  Procedure: GetBoundsRect
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: None
+  Result:    TRect
+-----------------------------------------------------------------------------}
+begin
+  Result := BoundsRect;
+end;
+
+
+
 function TPngSpeedButton2.GetCanvas: TCanvas;
 begin
   Result := Canvas;
@@ -338,29 +414,53 @@ begin
   Result := Height;
 end;
 
+function TPngSpeedButton2.GetImageIndex: Integer;
+{-----------------------------------------------------------------------------
+  Procedure: GetImageIndex
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: None
+  Result:    Integer
+-----------------------------------------------------------------------------}
+begin
+  Result := m_nImageIndex;
+end;
+
+function TPngSpeedButton2.GetImages: TPngImageList;
+{-----------------------------------------------------------------------------
+  Procedure: GetImages
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: None
+  Result:    TPngImageList
+-----------------------------------------------------------------------------}
+begin
+  Result := m_imagelist;
+end;
+
 function TPngSpeedButton2.GetLayout: TButtonLayout;
 begin
-  Result := Layout;
+  Result := inherited Layout;
 end;
 
 function TPngSpeedButton2.GetMargin: Integer;
 begin
-  Result := Margin;
+  Result := inherited Margin;
 end;
 
 function TPngSpeedButton2.GetPngBlendFactor: Integer;
 begin
-  Result := PngBlendFactor;
+  Result := m_nPngBlendFactor;
 end;
 
 function TPngSpeedButton2.GetPngImage: TPngImage;
 begin
-  Result := PngImage;
+  Result := m_PngImage;
 end;
 
 function TPngSpeedButton2.GetPngOptions: TPngOptions2;
 begin
-  Result := PngOptions;
+  Result := m_PngOptions;
 end;
 
 function TPngSpeedButton2.GetSpacing: Integer;
@@ -373,15 +473,55 @@ begin
   Result := Caption;
 end;
 
-function TPngSpeedButton2.GetThemedDetails: IThemedButtonDetails;
+
+function TPngSpeedButton2.GetThemedButtonDetails: IThemedButtonDetails;
+{-----------------------------------------------------------------------------
+  Procedure: GetThemedButtonDetails
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: None
+  Result:    IThemedButtonDetails
+-----------------------------------------------------------------------------}
 begin
   Result := m_themingdeatails;
 end;
+
+
+
+function TPngSpeedButton2.GetTransparent: Boolean;
+{-----------------------------------------------------------------------------
+  Procedure: GetTransparent
+  Author:    nbi
+  Date:      05-Aug-2015
+  Arguments: None
+  Result:    Boolean
+-----------------------------------------------------------------------------}
+begin
+  Result := not (csOpaque in ControlStyle);
+end;
+
+
 
 function TPngSpeedButton2.GetWidth: Integer;
 begin
   Result := Width;
 end;
+
+
+
+function TPngSpeedButton2.GetWordWrap: Boolean;
+{-----------------------------------------------------------------------------
+  Procedure: GetWordWrap
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: None
+  Result:    Boolean
+-----------------------------------------------------------------------------}
+begin
+  Result := m_bWordWrap;
+end;
+
+
 
 procedure TPngSpeedButton2.Loaded;
 begin
@@ -492,6 +632,20 @@ end;
 
 
 
+procedure TPngSpeedButton2.SetBoundsRect(value: TRect);
+{-----------------------------------------------------------------------------
+  Procedure: SetBoundsRect
+  Author:    nbi
+  Date:      28-Oct-2015
+  Arguments: value: TRect
+  Result:    None
+-----------------------------------------------------------------------------}
+begin
+  BoundsRect := value;
+end;
+
+
+
 procedure TPngSpeedButton2.SetImageIndex(const Value: Integer);
 {-----------------------------------------------------------------------------
   Procedure: SetImageIndex
@@ -524,7 +678,7 @@ end;
 
 
 
-procedure TPngSpeedButton2.SetImageList(const Value: TPngImageList);
+procedure TPngSpeedButton2.SetImages(const Value: TPngImageList);
 {-----------------------------------------------------------------------------
   Procedure: SetImageList
   Author:    nbi
